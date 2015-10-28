@@ -1,14 +1,15 @@
 import numpy as np
 from skimage.io import imread
-import time
-import ipdb
+
 
 def read_imgs_path_from_txt_file(file_path):
     with open(file_path, 'r') as f:
         paths = f.read().splitlines()
     return np.array(paths)
 
+
 class DataLayer(object):
+
     def __init__(self, params):
         self.batch_size = params['batch_size']
 
@@ -18,7 +19,8 @@ class DataLayer(object):
 
     # makes this method mandatory to implement
     def get_n_samples(self):
-        pass
+        raise NotImplementedError
+
 
 # Currently this layer stores all the imgs paths in memory.
 # If the dataset has too many images, the paths will occupy
@@ -26,6 +28,7 @@ class DataLayer(object):
 # But of course there are redundant subpaths in this files.
 # We can explore that fact in the future.
 class ImageDataLayer(DataLayer):
+
     def __init__(self, params):
         super(ImageDataLayer, self).__init__(params)
         self.imgs_source = params['imgs_source']
@@ -34,14 +37,14 @@ class ImageDataLayer(DataLayer):
         self.n_samples = None
 
     def get_n_samples(self):
-        if self.n_samples == None:
-            raise ValueError # actually want illegal state error
+        if self.n_samples is None:
+            raise ValueError  # actually want illegal state error
         return self.n_samples
 
     def read_img(self, path):
         img = imread(path, as_grey=self.gray)
         if len(img.shape) == 3:
-            img = img.transpose(2,0,1)
+            img = img.transpose(2, 0, 1)
         return img
 
     def permute_sample_inds(self):
@@ -70,7 +73,7 @@ class ImageDataLayer(DataLayer):
         last_idx = self.batch_idx + self.batch_size
         current_inds = np.empty(self.batch_size, int)
         if last_idx > self.n_samples:
-            first_amount = self.n_samples-self.batch_idx
+            first_amount = self.n_samples - self.batch_idx
             current_inds[:first_amount] = self.sample_inds[self.batch_idx:]
             self.batch_idx = last_idx - self.n_samples
             current_inds[first_amount:] = self.sample_inds[:self.batch_idx]
@@ -82,25 +85,30 @@ class ImageDataLayer(DataLayer):
         return current_inds
 
     def forward(self):
-        #start = time.clock()
+        # start = time.clock()
         current_imgs_inds = self.get_current_imgs_inds()
         current_paths = self.imgs_paths[current_imgs_inds]
         self.output_labels[:] = self.labels[current_imgs_inds]
         for i, path in enumerate(current_paths):
             img = self.read_img(path)
             if len(img.shape) == 2:
-                self.output[i,0,:] = img
+                self.output[i, 0, :] = img
             else:
-                self.output[i,:] = img
-        #end = time.clock()
-        #print end-start
+                self.output[i, :] = img
+        # end = time.clock()
+        # print end-start
+
 
 def test_image_data_layer():
     params = {}
     params['gray'] = True
     params['batch_size'] = 220
-    params['imgs_source'] = '/media/cesar/Acer/Users/cesarsalgado/datasets/tiny-imagenet-200/train/paths.txt'
-    params['labels_source'] = '/media/cesar/Acer/Users/cesarsalgado/datasets/tiny-imagenet-200/train/labels.txt'
+    params['imgs_source'] = '/media/cesar/Acer/Users/cesarsalgado/datasets/\
+                             tiny-imagenet-200/train/paths.txt'
+
+    params['labels_source'] = '/media/cesar/Acer/Users/cesarsalgado/datasets/\
+                               tiny-imagenet-200/train/labels.txt'
+
     img_data_layer = ImageDataLayer(params)
     rand_state = np.random.RandomState(1)
     img_data_layer.setup(rand_state)
